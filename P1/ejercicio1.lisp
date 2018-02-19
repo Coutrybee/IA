@@ -35,9 +35,23 @@
 ;; Ejercicio 1.2 ;;;
 ;;;;;;;;;;;;;;;;;;;;
 
+(defun insert (vec cat lst)
+	(cond ((eql vec nil) (append lst vec))
+		((eql lst nil) (cons vec lst))
+		(t (if (> (sc-rec cat vec) (sc-rec cat (first lst)))
+				(cons vec lst)
+				(cons (first lst) (insert vec cat (rest lst)))))))
+
+(defun sc-conf-rec (cat vs conf)
+	(if (null vs)
+		nil
+		(if (> (sc-rec cat (first vs)) conf)
+			(insert (first vs) cat (sc-conf-rec cat (rest vs) conf))
+			(sc-conf-rec cat (rest vs) conf))))
+
 (defun sc-conf(cat vs conf)
-	(if vs
-		(sort (copy-list(remove-if #'(lambda (y) (if (< (sc-rec cat y) conf) t)) vs)) #' (lambda (w z) (> (sc-rec cat w) (sc-rec cat z))))
+	(if (and vs cat)
+		(sc-conf-rec cat vs conf)
 		nil))
 
 ;;;;;;;;;;;;;;;;;;;;
@@ -49,4 +63,3 @@
 
 (defun sc-classifier (cats texts func)
 	(mapcar #' (lambda (x) (cons (first x) (sc-classifier-aux cats x func))) texts))
-
