@@ -1,4 +1,4 @@
-﻿;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Definicion de simbolos que representan valores de verdad,
 ;; conectores y predicados para evaluar si una expresion LISP
 ;; es un valor de verdad o un conector
@@ -161,40 +161,70 @@
 ;; EVALUA A : T si x esta en formato prefijo, 
 ;;            NIL en caso contrario. 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defun wff-infix-p (x)
-  ;;
-  ;; 4.1.4 Completa el codigo
-  ;;
-  ) 
+ (defun wff-infix-p (x)
+  (unless (null x)             ;; NIL no es FBF en formato prefijo (por convencion)
+    (or (literal-p x)         ;; Un literal es FBF en formato prefijo
+        (and (listp x)         ;; En caso de que no sea un literal debe ser una lista
+             (or (let* ((literal_1 (first x))
+				   (connector (second x))
+				   (literal_2 (third x))
+                   (rest_1    (rest  x))
+				   (rest_2 (rest rest_1))
+					(rest_3 (rest rest_2)))
+					(cond
+						((unary-connector-p literal_1)  ;; Si el primer elemento es un connector unario
+						 (and (null (rest rest_1))      ;; deberia tener la estructura (<conector> FBF)
+						      (wff-infix-p connector))) 
+						((binary-connector-p connector) ;; Si el primer elemento es un conector binario
+						   (and (null (rest rest_2))    ;; (<conector> FBF1 FBF2)
+							(wff-infix-p literal_1)
+							(wff-infix-p literal_2)))               
+						((n-ary-connector-p connector)  ;; Si el primer elemento es un conector enario
+						     (if (null rest_3)
+								(and (wff-infix-p literal_1) (wff-infix-p literal_2))
+								(and (wff-infix-p literal_1) (wff-infix-p rest_1))))
+						((and (n-ary-connector-p literal_1) (null rest_1)) T)	
+						(t NIL)))	
+				(let* ((connector_1 (first x))
+				   (connector_2 (third x))
+                   (rest_1    (rest  x)))
+					(cond              
+						((n-ary-connector-p connector_1)  ;; Si el primer elemento es un conector enario
+							(when (equal connector_2 connector_1)
+								(wff-infix-p rest_1)))
+						(t NIL))))))))
 
 ;;
 ;; EJEMPLOS:
 ;;
+
+(wff-infix-p '(A ^ C v D))
+(untrace wff-infix-p)
 (wff-infix-p 'a) 						; T
 (wff-infix-p '(^)) 					; T  ;; por convencion
 (wff-infix-p '(v)) 					; T  ;; por convencion
 (wff-infix-p '(A ^ (v))) 			      ; T  
-(wff-infix-p '( a ^ b ^ (p v q) ^ (~ r) ^ s))  	; T 
+(wff-infix-p '( a ^ b ^ (p v q) ^ (~ r) ^ s))  	; T este
 (wff-infix-p '(A => B)) 				; T
 (wff-infix-p '(A => (B <=> C))) 			; T
-(wff-infix-p '( B => (A ^ C ^ D))) 			; T   
-(wff-infix-p '( B => (A ^ C))) 			; T 
-(wff-infix-p '( B ^ (A ^ C))) 			; T 
-(wff-infix-p '((p v (a => (b ^ (~ c) ^ d))) ^ ((p <=> (~ q)) ^ p ) ^ e))  ; T 
+(wff-infix-p '( B => (A ^ C ^ D))) 			; T   este
+(wff-infix-p '( B => (A ^ C))) 			; T este
+(wff-infix-p '( B ^ (A ^ C))) 			; T este
+(wff-infix-p '((p v (a => (b ^ (~ c) ^ d))) ^ ((p <=> (~ q)) ^ p ) ^ e))  ; T etse
 (wff-infix-p nil) 					; NIL
 (wff-infix-p '(a ^)) 					; NIL
-(wff-infix-p '(^ a)) 					; NIL
-(wff-infix-p '(a)) 					; NIL
-(wff-infix-p '((a))) 				      ; NIL
+(wff-infix-p '(^ a)) 					; NIL sale t
+(wff-infix-p '(a)) 					; NIL sale t
+(wff-infix-p '((a))) 				      ; NIL sale t
 (wff-infix-p '((a) b))   			      ; NIL
-(wff-infix-p '(^ a b q (~ r) s))  		      ; NIL 
+(wff-infix-p '(^ a b q (~ r) s))  		      ; NIL sale t
 (wff-infix-p '( B => A C)) 			      ; NIL   
 (wff-infix-p '( => A)) 				      ; NIL   
 (wff-infix-p '(A =>)) 				      ; NIL   
 (wff-infix-p '(A => B <=> C)) 		      ; NIL
-(wff-infix-p '( B => (A ^ C v D))) 		      ; NIL   
-(wff-infix-p '( B ^ C v D )) 			      ; NIL 
-(wff-infix-p '((p v (a => e (b ^ (~ c) ^ d))) ^ ((p <=> (~ q)) ^ p ) ^ e)); NIL 
+(wff-infix-p '( B => (A ^ C v D))) 		      ; NIL sale t   
+(wff-infix-p '( B ^ C v D )) 			      ; NIL sale t
+(wff-infix-p '((p v (a => e (b ^ (~ c) ^ d))) ^ ((p <=> (~ q)) ^ p ) ^ e)); NIL sale t
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Convierte FBF en formato prefijo a FBF en formato infijo
