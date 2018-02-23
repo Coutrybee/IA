@@ -281,10 +281,38 @@
 ;; EVALUA A : FBF en formato prefijo 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun infix-to-prefix (wff)
-  ;;
-  ;; 4.1.5 Completa el codigo
-  ;;
-  )
+  (when (wff-infix-p wff)
+    (if (literal-p wff)
+        wff
+      (let* ((elemento_1      (first wff))
+			(conector      (second wff))
+			(elemento_2      (third wff))
+            (elements-wff (rest wff)))
+        (cond
+         ((unary-connector-p elemento_1) 
+          (list elemento_1 (infix-to-prefix conector)))
+
+         ((binary-connector-p conector) 
+          (list conector
+				(infix-to-prefix elemento_1)
+                (infix-to-prefix elemento_2)))
+
+		 ((n-ary-connector-p elemento_1) 
+          (cond 
+           ((null elements-wff)        
+            wff)))                       
+           
+         ((n-ary-connector-p conector) 
+          (infix_n-ary_prefix wff))
+         (t NIL)))))) ;; no deberia llegar a este paso nunca
+
+(defun infix_n-ary_prefix (wff)
+	(cons 	(second  wff) 
+			(mapcar #'(lambda(x) ( infix-to-prefix x)) 
+                      (recur wff))))
+(defun recur (wff)
+	(when wff
+	(cons (car wff) (recur (rest (rest wff))))))
 
 ;;
 ;; EJEMPLOS
@@ -294,6 +322,8 @@
 (infix-to-prefix '((a)))   ;; NIL
 (infix-to-prefix '(a))     ;; NIL
 (infix-to-prefix '(((a)))) ;; NIL
+(infix-to-prefix '(~ a))
+(infix-to-prefix '(a ^ (b ^ c) ^ (~ (d ^ (~ m))) ))
 (prefix-to-infix (infix-to-prefix '((p v (a => (b ^ (~ c) ^ d))) ^ ((p <=> (~ q)) ^ p) ^ e)) ) 
 ;;-> ((P V (A => (B ^ (~ C) ^ D))) ^ ((P <=> (~ Q)) ^ P) ^ E)
 
@@ -340,11 +370,15 @@
 ;; EVALUA A : T si FBF es una clausula, NIL en caso contrario. 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun clause-p (wff)
-  ;;
-  ;; 4.1.6 Completa el codigo
-  ;;
-  )
+	(when (listp wff)
+	  (when (and (eql (car wff) +or+) (lista-literales-clause-p (rest wff)))
+			t)))
 
+(defun lista-literales-clause-p (wff)
+	(if (null  wff) 
+		t
+		(when (literal-p (car wff))
+			(lista-literales-clause-p (rest wff)))))
 ;;
 ;; EJEMPLOS:
 ;;
@@ -371,10 +405,16 @@
 ;;            NIL en caso contrario. 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun cnf-p (wff)
-  ;;
-  ;; 4.1.7 Completa el codigo
-  ;;
-  )
+  	(when (listp wff)
+	  (when (and (eql (car wff) +and+) (lista-literales-cnf-p (rest wff)))
+			t)))
+
+(defun lista-literales-cnf-p (wff)
+	(if (null  wff) 
+		t
+		(when (clause-p (car wff))
+			(lista-literales-cnf-p (rest wff)))))
+  
 
 ;;
 ;; EJEMPLOS:
@@ -413,21 +453,24 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun eliminate-biconditional (wff)
-  (if (or (null wff) (literal-p wff))
+  (if (or (null wff) (literal-p wff))							;; si wff es un literal o nil, devuelve wff
       wff
     (let ((connector (first wff)))
-      (if (eq connector +bicond+)
+      (if (eq connector +bicond+)								;; Transforma bicondicional en and de cond de sus elementos
           (let ((wff1 (eliminate-biconditional (second wff)))
                 (wff2 (eliminate-biconditional (third  wff))))
             (list +and+ 
                   (list +cond+ wff1 wff2)
                   (list +cond+ wff2 wff1)))
-        (cons connector 
-              (mapcar #'eliminate-biconditional (rest wff)))))))
+        (cons connector 										;; Enlista el conector seguido de el resto de expresiones
+              (mapcar #'eliminate-biconditional (rest wff)))))));; transformando los bicondicionales
 
 ;;
 ;; EJEMPLOS:
 ;;
+
+(eliminate-biconditional '(<=> p  q ))
+
 (eliminate-biconditional '(<=> p  (v q s p) ))
 ;;   (^ (=> P (v Q S P)) (=> (v Q S P) P))
 (eliminate-biconditional '(<=>  (<=> p  q) (^ s (~ q))))
@@ -444,10 +487,18 @@
 ;;            sin el connector =>
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun eliminate-conditional (wff)  
-  ;;
-  ;; 4.2.2 Completa el codigo
-  ;;
-  )       
+   (if (or (null wff) (literal-p wff))							;; si wff es un literal o nil, devuelve wff
+      wff
+    (let ((connector (first wff)))
+      (if (eq connector +cond+)								;; Transforma bicondicional en and de cond de sus elementos
+          (let ((wff1 (eliminate-conditional (second wff)))
+                (wff2 (eliminate-conditional (third  wff))))
+            (list +or+ 
+                  (list +not+ wff1)
+                  wff2 ))
+        (cons connector 										;; Enlista el conector seguido de el resto de expresiones
+              (mapcar #'eliminate-conditional (rest wff)))))));; transformando los bicondicionales
+  
 
 ;;
 ;; EJEMPLOS:
@@ -468,10 +519,27 @@
 ;;            negativos.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun reduce-scope-of-negation (wff)
-  ;;
-  ;; 4.2.3 Completa el codigo
-  ;;
-  )
+  (if (eql (car wff) +not+)
+					(negar_lista (reduce-scope-of-negation (second wff)))
+					wff))
+
+(defun negar_literales (x)
+			(when x
+					(if (literal-p (car x))
+								(cons (negar_literal (car x)) (negar_literales (rest x)))
+								(cons (negar_lista (car x)) (negar_literales (rest x))))))
+
+(defun negar_lista (wff)
+		(when wff
+				(cons (exchange-and-or (car wff)) (negar_literales (rest wff)))))
+
+(defun negar_literal (x)
+	(cond 
+		((negative-literal-p  x)
+			(second x))
+		((positive-literal-p x)
+			(list +not+ x))
+		(t nil)))
 
 (defun exchange-and-or (connector)
   (cond
@@ -482,9 +550,10 @@
 ;;
 ;;  EJEMPLOS:
 ;;
+(reduce-scope-of-negation '(~ (~ (v p q))))
 (reduce-scope-of-negation '(~ (v p (~ q) r))) 
 ;;; (^ (~ P) Q (~ R))
-(reduce-scope-of-negation '(~ (^ p (~ q) (v  r s (~ a))))) 
+(reduce-scope-of-negation '(~(~ (^ p (~ q) (v  r s (~ a)))))) 
 ;;;  (V (~ P) Q (^ (~ R) (~ S) A))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
