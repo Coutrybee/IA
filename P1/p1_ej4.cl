@@ -831,8 +831,8 @@
 ;;            NIL en caso contrario
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun subsume (K1 K2)
-  (when (clause-in-clause (eliminate-repeated-literals k1) (eliminate-repeated-literals k2))
-	k1))
+  (when (clause-in-clause k1 k2)
+	(list k1)))
 	
 		
   
@@ -860,13 +860,11 @@
 ;; EJERCICIO 4.3.4
 ;; eliminacion de clausulas subsumidas en una FNC 
 ;; 
-;; RECIBE   : K (clausula), cnf (FBF en FNC)
+;; RECIBE   : cnf (FBF en FNC)
 ;; EVALUA A : FBF en FNC equivalente a cnf sin clausulas subsumidas 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun eliminate-subsumed-clauses (cnf) 
-  ;;
-  ;; 4.3.4 Completa el codigo
-  ;;
+  
 )
 
 ;;
@@ -961,10 +959,10 @@
 ;;            que no contienen el literal lambda ni ~lambda   
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun extract-neutral-clauses (lambda cnf) 
-  ;;
-  ;; 4.4.1 Completa el codigo
-  ;;
-  )
+  (when cnf
+		(if (or (comprueba-rep lambda (car cnf)) (comprueba-rep (negar_literal lambda) (car cnf)))
+			(extract-neutral-clauses lambda (rest cnf))
+			(cons (car cnf) (extract-neutral-clauses lambda (rest cnf))))))
 
 ;;
 ;;  EJEMPLOS:
@@ -998,10 +996,10 @@
 ;;            que contienen el literal lambda  
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun extract-positive-clauses (lambda cnf) 
-  ;;
-  ;; 4.4.2 Completa el codigo
-  ;;
-  )
+  (when cnf
+		(if (comprueba-rep lambda (car cnf))
+			(cons (car cnf) (extract-positive-clauses lambda (rest cnf)))
+			(extract-positive-clauses lambda (rest cnf)))))
 
 ;;
 ;;  EJEMPLOS:
@@ -1033,10 +1031,10 @@
 ;;            que contienen el literal ~lambda  
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun extract-negative-clauses (lambda cnf) 
-  ;;
-  ;; 4.4.3 Completa el codigo
-  ;;
-  )
+  (when cnf
+		(if (comprueba-rep (negar_literal lambda) (car cnf))
+			(cons (car cnf) (extract-negative-clauses lambda (rest cnf)))
+			(extract-negative-clauses lambda (rest cnf)))))
 
 ;;
 ;;  EJEMPLOS:
