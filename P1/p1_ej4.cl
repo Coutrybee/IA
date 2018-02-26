@@ -519,19 +519,25 @@
 ;;            negativos.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun reduce-scope-of-negation (wff)
-  (if (eql (car wff) +not+)
-					(negar_lista (reduce-scope-of-negation (second wff)))
-					wff))
+  (if (or (null wff) (literal-p wff) (n-ary-connector-p wff))
+		wff
+		(cond 
+			((eql (car wff) +not+)
+				(negar_lista (reduce-scope-of-negation (second wff))))
+			(t
+				(cons (reduce-scope-of-negation (car wff)) (reduce-scope-of-negation (rest wff)))))))
 
 (defun negar_literales (x)
-			(when x
-					(if (literal-p (car x))
-								(cons (negar_literal (car x)) (negar_literales (rest x)))
-								(cons (negar_lista (car x)) (negar_literales (rest x))))))
+	(when x
+		(if (literal-p (car x))
+			(cons (negar_literal (car x)) (negar_literales (rest x)))
+			(cons (negar_lista (car x)) (negar_literales (rest x))))))
 
 (defun negar_lista (wff)
 		(when wff
-				(cons (exchange-and-or (car wff)) (negar_literales (rest wff)))))
+			(if (literal-p wff)
+				(negar_literal wff)
+				(cons (exchange-and-or (car wff)) (negar_literales (rest wff))))))
 
 (defun negar_literal (x)
 	(cond 
@@ -550,6 +556,9 @@
 ;;
 ;;  EJEMPLOS:
 ;;
+
+(reduce-scope-of-negation '(^ (V P (V (~ A) (^ B (~ C) D))) (^ (^ (V (~ P) (~ Q)) (V (~ (~ Q)) P)) P) E))
+(reduce-scope-of-negation '(V (~ (~ Q)) P))
 (reduce-scope-of-negation '(~ (~ (v p q))))
 (reduce-scope-of-negation '(~ (v p (~ q) r))) 
 ;;; (^ (~ P) Q (~ R))
@@ -569,20 +578,24 @@
 ;; EVALUA A : FBF equivalente en formato prefijo FNC 
 ;;            con conectores ^, v
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;Combina el elemento elt con cada elemento de la lista lst
 (defun combine-elt-lst (elt lst)
   (if (null lst)
       (list (list elt))
     (mapcar #'(lambda (x) (cons elt x)) lst)))
 
+;;Aplica la ley de asociatividad a los elementos en disyuncion
 (defun exchange-NF (nf)
   (if (or (null nf) (literal-p nf)) 
       nf
     (let ((connector (first nf)))
-      (cons (exchange-and-or connector)
+      (cons (exchange-and-or connector) ;; intercambia el conector and por or y viceversa
             (mapcar #'(lambda (x)
                           (cons connector x))
-                (exchange-NF-aux (rest nf)))))))
+                (exchange-NF-aux (rest nf))))))) 
 
+;;Combina listas de literales haciendo un producto cartesiano
 (defun exchange-NF-aux (nf)
   (if (null nf) 
       NIL
@@ -593,6 +606,8 @@
                    (exchange-NF-aux (rest nf)))) 
         (if (literal-p lst) (list lst) (rest lst))))))
 
+
+;; Combina los wffs o literales que tienen el mismo conector, poniendolos al mismo nivel
 (defun simplify (connector lst-wffs )
   (if (literal-p lst-wffs)
       lst-wffs                    
@@ -606,27 +621,33 @@
                  (t (list x))))               
       lst-wffs)))
 
+;;Transforma una lista en prefijo a FNC
 (defun cnf (wff)
   (cond
    ((cnf-p wff) wff)
    ((literal-p wff)
-    (list +and+ (list +or+ wff)))
+    (list +and+ (list +or+ wff))) 											;;Por convencion
    ((let ((connector (first wff))) 
       (cond
        ((equal +and+ connector) 
-        (cons +and+ (simplify +and+ (mapcar #'cnf (rest wff)))))
-       ((equal +or+ connector) 
-        (cnf (exchange-NF (cons +or+ (simplify +or+ (rest wff)))))))))))
+        (cons +and+ (simplify +and+ (mapcar #'cnf (rest wff)))))			;;En caso de estar en conjuncion pone todo al mismo nivel
+       ((equal +or+ connector) 												;;En caso de estar en disyuncion lo transforma a conjuncion 
+        (cnf (exchange-NF (cons +or+ (simplify +or+ (rest wff)))))))))))    ;;y aplica la ley de asociatividad
 
 
 (cnf 'a)
+
+(simplify '^ '(A (v c d)))
 
 (cnf '(v (~ a) b c))
 (print (cnf '(^ (v (~ a) b c) (~ e) (^ e f (~ g) h) (v m n) (^ r s q) (v u q) (^ x y))))
 (print (cnf '(v (^ (~ a) b c) (~ e) (^ e f (~ g) h) (v m n) (^ r s q) (v u q) (^ x y))))
 (print (cnf '(^ (v p  (~ q)) a (v k  r  (^ m  n)))))
 (print (cnf '(v p  q  (^ r  m)  (^ n  a)  s )))
+
 (exchange-NF '(v p  q  (^ r  m)  (^ n  a)  s ))
+(cnf '(v p  q  (^ r  (^ d f (^ z w (^ l n))))))
+
 (cnf '(^ (v a b (^ y r s) (v k l)) c (~ d) (^ e f (v h i) (^ o p))))
 (cnf '(^ (v a b (^ y r s)) c (~ d) (^ e f (v h i) (^ o p))))
 (cnf '(^ (^ y r s (^ p q (v c d))) (v a b)))
@@ -674,11 +695,14 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun eliminate-connectors (cnf)
-  ;;
-  ;; 4.2.5 Completa el codigo
-  ;;
-  )
-
+	(when cnf
+	  (cond 
+		((n-ary-connector-p (car cnf))
+			(eliminate-connectors (rest cnf)))
+		((listp (car cnf))
+			(cons (eliminate-connectors (car cnf)) (eliminate-connectors (rest cnf))))
+		(t (cons (car cnf) (eliminate-connectors (rest cnf)))))))
+	
 (eliminate-connectors 'nil)
 (eliminate-connectors (cnf '(^ (v p  (~ q))  (v k  r  (^ m  n)))))
 (eliminate-connectors
@@ -710,10 +734,8 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun wff-infix-to-cnf (wff)
-  ;;
-  ;; 4.2.6 Completa el codigo
-  ;;
-  )
+	(eliminate-connectors (cnf (reduce-scope-of-negation (eliminate-conditional (eliminate-biconditional (infix-to-prefix wff)))))))
+
 
 ;;
 ;; EJEMPLOS:
@@ -724,6 +746,8 @@
 (wff-infix-to-cnf  '((p v (a => (b ^ (~ c) ^ d))) ^ ((p <=> (~ q)) ^ p) ^ e))
 ;; ((P (~ A) B) (P (~ A) (~ C)) (P (~ A) D) ((~ P) (~ Q)) (Q P) (P) (E))
 
+(wff-infix-to-cnf  '((p v (a => (b ^ (~ c) ^ d))) ^ ((p <=> (~ q)) ^ p) ^ e))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; EJERCICIO 4.3.1
 ;; eliminacion de literales repetidos una clausula 
@@ -733,14 +757,25 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defun eliminate-repeated-literals (k)
-  ;;
-  ;; 4.3.1 Completa el codigo
-  ;;
-  )
+  (when k
+		(if (comprueba-rep (car k) (rest k))
+			(eliminate-repeated-literals (rest  k))
+			(cons (car k) (eliminate-repeated-literals (rest k))))))
+
+(defun comprueba-rep (elt lst)
+	(when lst
+		(if (equal elt (car lst))
+			T
+			(comprueba-rep elt (rest lst)))))
 
 ;;
 ;; EJEMPLO:
 ;;
+
+(comprueba-rep 'a '(a b (~ c) (~ a) a c (~ c) c a))
+
+(eliminate-repeated-literals '(a b c))
+
 (eliminate-repeated-literals '(a b (~ c) (~ a) a c (~ c) c a))
 ;;;   (B (~ A) (~ C) C A)
 
@@ -752,18 +787,42 @@
 ;; EVALUA A : FNC equivalente sin clausulas repetidas 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun eliminate-repeated-clauses (cnf) 
-  ;;
-  ;; 4.3.2 Completa el codigo
-  ;;
-  )
+  (when cnf
+		(if (comprueba-rep-clause (car cnf) (rest cnf))
+			(eliminate-repeated-clauses (rest  cnf))
+			(append (eliminate-repeated-literals (car cnf)) (eliminate-repeated-clauses (rest cnf))))))
+
+(defun repited-clause (cl1 cl2)
+	(let ((el1 (eliminate-repeated-literals cl1))
+			(el2 (eliminate-repeated-literals cl2)))		
+		(and 
+			(clause-in-clause el1 el2) (clause-in-clause el2 el1))))
+
+(defun clause-in-clause ( cl1 cl2)
+	(or (null cl1) 
+		(and (comprueba-rep (car cl1) cl2)
+			(clause-in-clause (rest cl1) cl2))))
+
+(defun comprueba-rep-clause (cl1 lst)	
+	(when lst
+		(if (repited-clause cl1 (car lst))
+			T
+			(comprueba-rep-clause cl1 (rest lst)))))
+	
 
 ;;
 ;; EJEMPLO:
 ;;
+
+(clause-in-clause '(a b) '(c b a))
+
+(repited-clause '(a b d c) '(c b a c))
+(eliminate-repeated-literals '((~ a) (~ a) b c b))
+
 (eliminate-repeated-clauses '(((~ a) c) (c (~ a)) ((~ a) (~ a) b c b) (a a b) (c (~ a) b  b) (a b)))
 ;;; ((C (~ A)) (C (~ A) B) (A B))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;m
 ;; EJERCICIO 4.3.3
 ;; Predicado que determina si una clausula subsume otra
 ;;
@@ -772,10 +831,10 @@
 ;;            NIL en caso contrario
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun subsume (K1 K2)
-  ;;
-  ;; 4.3.3 Completa el codigo
-  ;;
-  )
+  (when (clause-in-clause (eliminate-repeated-literals k1) (eliminate-repeated-literals k2))
+	k1))
+	
+		
   
 ;;
 ;;  EJEMPLOS:
@@ -832,10 +891,10 @@
 ;;            NIL en caso contrario
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun tautology-p (K) 
-  ;;
-  ;; 4.3.5 Completa el codigo
-  ;;
-  )
+    (when k
+		(if (comprueba-rep (negar_literal(car k)) (rest k))
+			t
+			(tautology-p (rest k)))))
 
 ;;
 ;;  EJEMPLOS:
@@ -851,10 +910,10 @@
 ;; EVALUA A : FBF en FNC equivalente a cnf sin tautologias 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun eliminate-tautologies (cnf) 
-  ;;
-  ;; 4.3.6 Completa el codigo
-  ;;
-  )
+	  (when cnf
+		(if (tautology-p (car cnf))
+			(eliminate-tautologies (rest cnf))
+			(cons (car cnf) (eliminate-tautologies (rest cnf))))))
 
 ;;
 ;;  EJEMPLOS:
