@@ -2,56 +2,49 @@
 ;; Ejercicio 1.1a ;;
 ;;;;;;;;;;;;;;;;;;;;
 
+;;Realiza el cuadrado de un elemento
 (defun cuadrado (x) 
 	(* x x))
 
-(defun sumatorio-sqr (lista)
+;;Realiza el sumatorio de los elementos de la lista al cuadrado de forma recursiva
+(defun sumatorio-sqr_rec (lista)
 	(if lista
-		(eval (+ (cuadrado (first lista)) (sumatorio-sqr (rest lista))))
+		(eval (+ (cuadrado (first lista)) (sumatorio-sqr_rec (rest lista))))
 		0 ))
 
-(defun sumatorio-listas (lista1 lista2)
+;;Realiza el sumatorio de los elementos de 2 listas de forma recursiva
+(defun sumatorio-listas_rec (lista1 lista2)
 	(if lista1
-		(eval (+ (* (first lista1) (first lista2)) (sumatorio-listas (rest lista1) (rest lista2))))
+		(eval (+ (* (first lista1) (first lista2)) (sumatorio-listas_rec (rest lista1) (rest lista2))))
 		0))
 
+;;Realiza el coseno entre 2 vectores de forma recursiva
 (defun sc-rec (x y)
-	(/ (sumatorio-listas x y) (* (sqrt (sumatorio-sqr x)) (sqrt (sumatorio-sqr y)))))
+	(/ (sumatorio-listas_rec x y) (* (sqrt (sumatorio-sqr_rec x)) (sqrt (sumatorio-sqr_rec y)))))
 
 ;;;;;;;;;;;;;;;;;;;;
 ;; Ejercicio 1.1b ;;
 ;;;;;;;;;;;;;;;;;;;;
 
-(defun sumatorio-sqr (lista)
+;;Realiza el sumatorio de los elementos de la lista al cuadrado con mapcar
+(defun sumatorio-sqr_mapcar (lista)
 	(apply '+ (mapcar #'(lambda (x) (+ (cuadrado x))) lista)))
 
-(defun sumatorio-listas (lista1 lista2)
+;;Realiza el sumatorio de los elementos de 2 listas con mapcar
+(defun sumatorio-listas_mapcar (lista1 lista2)
 	(apply '+ (mapcar #'(lambda (x y) (* x y)) lista1 lista2)))
 
+;;Realiza el coseno entre 2 vectores usando mapcar
 (defun sc-mapcar (x y)
-	(/ (sumatorio-listas x y) (* (sqrt (sumatorio-sqr x)) (sqrt (sumatorio-sqr y)))))
+	(/ (sumatorio-listas_mapcar x y) (* (sqrt (sumatorio-sqr_mapcar x)) (sqrt (sumatorio-sqr_mapcar y)))))
 
 ;;;;;;;;;;;;;;;;;;;;
 ;; Ejercicio 1.2 ;;;
 ;;;;;;;;;;;;;;;;;;;;
 
-(defun insert (vec cat lst)
-	(cond ((eql vec nil) (append lst vec))
-		((eql lst nil) (cons vec lst))
-		(t (if (> (sc-rec cat vec) (sc-rec cat (first lst)))
-				(cons vec lst)
-				(cons (first lst) (insert vec cat (rest lst)))))))
-
-(defun sc-conf-rec (cat vs conf)
-	(if (null vs)
-		nil
-		(if (> (sc-rec cat (first vs)) conf)
-			(insert (first vs) cat (sc-conf-rec cat (rest vs) conf))
-			(sc-conf-rec cat (rest vs) conf))))
-
 (defun sc-conf(cat vs conf)
-	(if (and vs cat)
-		(sc-conf-rec cat vs conf)
+	(if vs
+		(sort (copy-list(remove-if #'(lambda (y) (if (< (sc-rec cat y) conf) t)) vs)) #' (lambda (w z) (> (sc-rec cat w) (sc-rec cat z))))
 		nil))
 
 ;;;;;;;;;;;;;;;;;;;;
@@ -63,3 +56,4 @@
 
 (defun sc-classifier (cats texts func)
 	(mapcar #' (lambda (x) (cons (first x) (sc-classifier-aux cats x func))) texts))
+

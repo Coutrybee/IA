@@ -239,20 +239,20 @@
       (let ((connector      (first wff))
             (elements-wff (rest wff)))
         (cond
-         ((unary-connector-p connector) 
+         ((unary-connector-p connector) 						;; Si el primer elemento es un connector unario
           (list connector (prefix-to-infix (second wff))))
-         ((binary-connector-p connector) 
+         ((binary-connector-p connector) 						;; Si el primer elemento es un conector binario
           (list (prefix-to-infix (second wff))
                 connector
                 (prefix-to-infix (third wff))))
-         ((n-ary-connector-p connector) 
+         ((n-ary-connector-p connector) 						;; Si el primer elemento es un conector enario
           (cond 
-           ((null elements-wff)        ;;; conjuncion o disyuncion vacias. 
-            wff)                       ;;; por convencion, se acepta como fbf en formato infijo
-           ((null (cdr elements-wff))  ;;; conjuncion o disyuncion con un unico elemento
+           ((null elements-wff)        							;; conjuncion o disyuncion vacias. 
+            wff)                       							;; por convencion, se acepta como fbf en formato infijo
+           ((null (cdr elements-wff))  							;; conjuncion o disyuncion con un unico elemento
             (prefix-to-infix (car elements-wff)))  
            (t (cons (prefix-to-infix (first elements-wff)) 
-                    (mapcan #'(lambda(x) (list connector (prefix-to-infix x))) 
+                    (mapcan #'(lambda(x) (list connector (prefix-to-infix x))) ;; Concatenar primer elemento, conector y el resto de la lista transformada
                       (rest elements-wff))))))
          (t NIL)))))) ;; no deberia llegar a este paso nunca
 
@@ -289,20 +289,20 @@
 			(elemento_2      (third wff))
             (elements-wff (rest wff)))
         (cond
-         ((unary-connector-p elemento_1) 
+         ((unary-connector-p elemento_1) 						;; Si el primer elemento es un connector unario
           (list elemento_1 (infix-to-prefix conector)))
 
-         ((binary-connector-p conector) 
+         ((binary-connector-p conector) 						;; Si el primer elemento es un conector binario
           (list conector
 				(infix-to-prefix elemento_1)
                 (infix-to-prefix elemento_2)))
 
-		 ((n-ary-connector-p elemento_1) 
+		 ((n-ary-connector-p elemento_1) 						;; Si el primer elemento es un conector enario
           (cond 
-           ((null elements-wff)        
+           ((null elements-wff)        							;; Condicion de parada
             wff)))                       
            
-         ((n-ary-connector-p conector) 
+         ((n-ary-connector-p conector) 							;; Si el segundo elemento es conector, cambiamos a prefix por cada elemento
           (infix_n-ary_prefix wff))
          (t NIL)))))) ;; no deberia llegar a este paso nunca
 
@@ -310,6 +310,7 @@
 	(cons 	(second  wff) 
 			(mapcar #'(lambda(x) ( infix-to-prefix x)) 
                       (recur wff))))
+
 (defun recur (wff)
 	(when wff
 	(cons (car wff) (recur (rest (rest wff))))))
@@ -374,11 +375,13 @@
 	  (when (and (eql (car wff) +or+) (lista-literales-clause-p (rest wff)))
 			t)))
 
+;; Devuelve los literales de un FBF
 (defun lista-literales-clause-p (wff)
 	(if (null  wff) 
 		t
 		(when (literal-p (car wff))
 			(lista-literales-clause-p (rest wff)))))
+
 ;;
 ;; EJEMPLOS:
 ;;
@@ -409,6 +412,7 @@
 	  (when (and (eql (car wff) +and+) (lista-literales-cnf-p (rest wff)))
 			t)))
 
+;;Devuelve un lista de clausulas sin los conectores que lo unen
 (defun lista-literales-cnf-p (wff)
 	(if (null  wff) 
 		t
@@ -490,14 +494,14 @@
    (if (or (null wff) (literal-p wff))							;; si wff es un literal o nil, devuelve wff
       wff
     (let ((connector (first wff)))
-      (if (eq connector +cond+)								;; Transforma bicondicional en and de cond de sus elementos
+      (if (eq connector +cond+)								;; Transforma el condicional en su formula con or y not
           (let ((wff1 (eliminate-conditional (second wff)))
                 (wff2 (eliminate-conditional (third  wff))))
             (list +or+ 
                   (list +not+ wff1)
                   wff2 ))
         (cons connector 										;; Enlista el conector seguido de el resto de expresiones
-              (mapcar #'eliminate-conditional (rest wff)))))));; transformando los bicondicionales
+              (mapcar #'eliminate-conditional (rest wff)))))))	;; transformando los bicondicionales
   
 
 ;;
@@ -527,18 +531,21 @@
 			(t
 				(cons (reduce-scope-of-negation (car wff)) (reduce-scope-of-negation (rest wff)))))))
 
+;;Niega los elementos de una clausula, sin el conector previo
 (defun negar_literales (x)
 	(when x
 		(if (literal-p (car x))
 			(cons (negar_literal (car x)) (negar_literales (rest x)))
 			(cons (negar_lista (car x)) (negar_literales (rest x))))))
 
+;;Niega una clausula
 (defun negar_lista (wff)
 		(when wff
 			(if (literal-p wff)
 				(negar_literal wff)
 				(cons (exchange-and-or (car wff)) (negar_literales (rest wff))))))
 
+;;Niega un literal
 (defun negar_literal (x)
 	(cond 
 		((negative-literal-p  x)
@@ -547,6 +554,7 @@
 			(list +not+ x))
 		(t nil)))
 
+;;Intercambia or por and y vicevrsa
 (defun exchange-and-or (connector)
   (cond
    ((eq connector +and+) +or+)    
@@ -697,11 +705,11 @@
 (defun eliminate-connectors (cnf)
 	(when cnf
 	  (cond 
-		((n-ary-connector-p (car cnf))
-			(eliminate-connectors (rest cnf)))
-		((listp (car cnf))
-			(cons (eliminate-connectors (car cnf)) (eliminate-connectors (rest cnf))))
-		(t (cons (car cnf) (eliminate-connectors (rest cnf)))))))
+		((n-ary-connector-p (car cnf))						;; Si es un conector enario
+			(eliminate-connectors (rest cnf)))				;; Recursivamente elimina el resto de conectores
+		((listp (car cnf))									;; Si es una lista
+			(cons (eliminate-connectors (car cnf)) (eliminate-connectors (rest cnf)))) ;; Concatena el primer elemento sin conectores con el resto de la lista 
+		(t (cons (car cnf) (eliminate-connectors (rest cnf)))))))		;; En otro caso concatena el elemento con el resto de la lista sin conectores
 	
 (eliminate-connectors 'nil)
 (eliminate-connectors (cnf '(^ (v p  (~ q))  (v k  r  (^ m  n)))))
@@ -734,7 +742,8 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun wff-infix-to-cnf (wff)
-	(eliminate-connectors (cnf (reduce-scope-of-negation (eliminate-conditional (eliminate-biconditional (infix-to-prefix wff)))))))
+	(eliminate-connectors (cnf (reduce-scope-of-negation (eliminate-conditional (eliminate-biconditional (infix-to-prefix wff))))))) ;; Transforma a prefijo y aplica todos los pasos
+																																	 ;; para transformar un FBF a FNC
 
 
 ;;
@@ -758,10 +767,11 @@
 
 (defun eliminate-repeated-literals (k)
   (when k
-		(if (comprueba-rep (car k) (rest k))
-			(eliminate-repeated-literals (rest  k))
-			(cons (car k) (eliminate-repeated-literals (rest k))))))
+		(if (comprueba-rep (car k) (rest k))			;; Si el primero esta contenido en el reto de la lista
+			(eliminate-repeated-literals (rest  k))		;; Ignoramos el elemento repetido y seguimos analizando
+			(cons (car k) (eliminate-repeated-literals (rest k))))))	;; Concatemanos el primer elemento para que no se pierda
 
+;; Comprueba si un elemento esta contenido en la lista
 (defun comprueba-rep (elt lst)
 	(when lst
 		(if (equal elt (car lst))
@@ -788,21 +798,24 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun eliminate-repeated-clauses (cnf) 
   (when cnf
-		(if (comprueba-rep-clause (car cnf) (rest cnf))
+		(if (comprueba-rep-clause (car cnf) (rest cnf)) 
 			(eliminate-repeated-clauses (rest  cnf))
 			(append (eliminate-repeated-literals (car cnf)) (eliminate-repeated-clauses (rest cnf))))))
 
+;; Comprueba si cl1 y cl2 son iguales en elementos, no importa el orden
 (defun repited-clause (cl1 cl2)
 	(let ((el1 (eliminate-repeated-literals cl1))
 			(el2 (eliminate-repeated-literals cl2)))		
 		(and 
 			(clause-in-clause el1 el2) (clause-in-clause el2 el1))))
 
+;; Comprueba si cl1 esta contenido en cl2
 (defun clause-in-clause ( cl1 cl2)
 	(or (null cl1) 
 		(and (comprueba-rep (car cl1) cl2)
 			(clause-in-clause (rest cl1) cl2))))
 
+;; Comprueba si una clausula esta en la lista
 (defun comprueba-rep-clause (cl1 lst)	
 	(when lst
 		(if (repited-clause cl1 (car lst))
@@ -831,7 +844,7 @@
 ;;            NIL en caso contrario
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun subsume (K1 K2)
-  (when (clause-in-clause k1 k2)
+  (when (clause-in-clause k1 k2)		;; Si K1 esta contenido en K2
 	(list k1)))
 	
 		
@@ -890,7 +903,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun tautology-p (K) 
     (when k
-		(if (comprueba-rep (negar_literal(car k)) (rest k))
+		(if (comprueba-rep (negar_literal(car k)) (rest k))		;; Si el negado de un elemento esta contenido en el resto de la lista
 			t
 			(tautology-p (rest k)))))
 
@@ -909,7 +922,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun eliminate-tautologies (cnf) 
 	  (when cnf
-		(if (tautology-p (car cnf))
+		(if (tautology-p (car cnf))									;; Si el primer elemento contiene tautologias
 			(eliminate-tautologies (rest cnf))
 			(cons (car cnf) (eliminate-tautologies (rest cnf))))))
 
@@ -960,7 +973,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun extract-neutral-clauses (lambda cnf) 
   (when cnf
-		(if (or (comprueba-rep lambda (car cnf)) (comprueba-rep (negar_literal lambda) (car cnf)))
+		(if (or (comprueba-rep lambda (car cnf)) (comprueba-rep (negar_literal lambda) (car cnf)))		;; Si el elemento esta contenido en positivo o negativo en la primera clausula de cnf
 			(extract-neutral-clauses lambda (rest cnf))
 			(cons (car cnf) (extract-neutral-clauses lambda (rest cnf))))))
 
@@ -997,7 +1010,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun extract-positive-clauses (lambda cnf) 
   (when cnf
-		(if (comprueba-rep lambda (car cnf))
+		(if (comprueba-rep lambda (car cnf))			;; Si el elemento esta contenido en la primera clausula de la lista
 			(cons (car cnf) (extract-positive-clauses lambda (rest cnf)))
 			(extract-positive-clauses lambda (rest cnf)))))
 
@@ -1032,7 +1045,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun extract-negative-clauses (lambda cnf) 
   (when cnf
-		(if (comprueba-rep (negar_literal lambda) (car cnf))
+		(if (comprueba-rep (negar_literal lambda) (car cnf))				;; Si el elemento negado esta contenido en la primera clausula de la lista
 			(cons (car cnf) (extract-negative-clauses lambda (rest cnf)))
 			(extract-negative-clauses lambda (rest cnf)))))
 
