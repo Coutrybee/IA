@@ -1,0 +1,470 @@
+
+(defconstant +bicond+ '<=>)
+(defconstant +cond+   '=>)
+(defconstant +and+    '^)
+(defconstant +or+     'v)
+(defconstant +not+    '~)
+
+(defun truth-value-p (x)
+  (or (eql x T) (eql x NIL)))
+
+(defun unary-connector-p (x)
+  (eql x +not+))
+
+(defun binary-connector-p (x)
+  (or (eql x +bicond+)
+      (eql x +cond+)))
+
+(defun n-ary-connector-p (x)
+  (or (eql x +and+)
+      (eql x +or+)))
+
+(defun connector-p (x)
+  (or (unary-connector-p  x)
+      (binary-connector-p x)
+      (n-ary-connector-p  x)))
+
+(defun positive-literal-p (x)
+  (if (or (connector-p x) (truth-value-p x) (listp x))
+		nil
+		T))
+
+(defun negative-literal-p (x)
+	(when (listp x)
+			(when (and (unary-connector-p (car x)) (positive-literal-p (cadr x)))
+			T)))
+
+(defun literal-p (x)
+  (if (or (negative-literal-p x) (positive-literal-p x))
+	T
+	nil))
+
+(defun wff-prefix-p (x)
+  (unless (null x)             ;; NIL no es FBF en formato prefijo (por convencion)
+    (or (literal-p x)          ;; Un literal es FBF en formato prefijo
+        (and (listp x)         ;; En caso de que no sea un literal debe ser una lista
+             (let ((connector (first x))
+                   (rest_1    (rest  x)))
+               (cond
+                ((unary-connector-p connector)  ;; Si el primer elemento es un connector unario
+                 (and (null (rest rest_1))      ;; deberia tener la estructura (<conector> FBF)
+                      (wff-prefix-p (first rest_1))))
+                ((binary-connector-p connector) ;; Si el primer elemento es un conector binario
+                 (let ((rest_2 (rest rest_1)))  ;; deberia tener la estructura
+                   (and (null (rest rest_2))    ;; (<conector> FBF1 FBF2)
+                        (wff-prefix-p (first rest_1))
+                        (wff-prefix-p (first rest_2)))))
+                ((n-ary-connector-p connector)  ;; Si el primer elemento es un conector enario
+                 (or (null rest_1)              ;; conjuncion o disyuncion vacias
+                     (and (wff-prefix-p (first rest_1)) ;; tienen que ser FBF los operandos
+                          (let ((rest_2 (rest rest_1)))
+                            (or (null rest_2)           ;; conjuncion o disyuncion con un elemento
+                                (wff-prefix-p (cons connector rest_2)))))))
+                (t NIL)))))))                 ;; No es FBF en formato prefijo
+
+(defun wff-infix-p (x)
+ (unless (null x)             ;; NIL no es FBF en formato prefijo (por convencion)
+   (or (literal-p x)         ;; Un literal es FBF en formato prefijo
+       (and (listp x)         ;; En caso de que no sea un literal debe ser una lista
+            (or (let* ((literal_1 (first x))
+				   (connector (second x))
+				   (literal_2 (third x))
+                  (rest_1    (rest  x))
+				   (rest_2 (rest rest_1))
+					(rest_3 (rest rest_2)))
+					(cond
+						((unary-connector-p literal_1)  ;; Si el primer elemento es un connector unario
+						 (and (null (rest rest_1))      ;; deberia tener la estructura (<conector> FBF)
+						      (wff-infix-p connector)))
+						((binary-connector-p connector) ;; Si el primer elemento es un conector binario
+						   (and (null (rest rest_2))    ;; (<conector> FBF1 FBF2)
+							(wff-infix-p literal_1)
+							(wff-infix-p literal_2)))
+						((n-ary-connector-p connector)  ;; Si el primer elemento es un conector enario
+						     (if (null rest_3)
+								(and (wff-infix-p literal_1) (wff-infix-p literal_2))
+								(and (wff-infix-p literal_1) (wff-infix-p rest_1))))
+						((and (n-ary-connector-p literal_1) (null rest_1)) T)
+						(t NIL)))
+				(let* ((connector_1 (first x))
+				   (connector_2 (third x))
+                  (rest_1    (rest  x)))
+					(cond
+						((n-ary-connector-p connector_1)  ;; Si el primer elemento es un conector enario
+							(when (equal connector_2 connector_1)
+								(wff-infix-p rest_1)))
+						(t NIL))))))))
+
+
+(defun prefix-to-infix (wff)
+  (when (wff-prefix-p wff)
+    (if (literal-p wff)
+        wff
+      (let ((connector      (first wff))
+            (elements-wff (rest wff)))
+        (cond
+         ((unary-connector-p connector) 						;; Si el primer elemento es un connector unario
+          (list connector (prefix-to-infix (second wff))))
+         ((binary-connector-p connector) 						;; Si el primer elemento es un conector binario
+          (list (prefix-to-infix (second wff))
+                connector
+                (prefix-to-infix (third wff))))
+         ((n-ary-connector-p connector) 						;; Si el primer elemento es un conector enario
+          (cond
+           ((null elements-wff)        							;; conjuncion o disyuncion vacias.
+            wff)                       							;; por convencion, se acepta como fbf en formato infijo
+           ((null (cdr elements-wff))  							;; conjuncion o disyuncion con un unico elemento
+            (prefix-to-infix (car elements-wff)))
+           (t (cons (prefix-to-infix (first elements-wff))
+                    (mapcan #'(lambda(x) (list connector (prefix-to-infix x))) ;; Concatenar primer elemento, conector y el resto de la lista transformada
+                      (rest elements-wff))))))
+         (t NIL))))))
+
+
+(defun infix-to-prefix (wff)
+ (when (wff-infix-p wff)
+   (if (literal-p wff)
+       wff
+     (let* ((elemento_1      (first wff))
+			(conector      (second wff))
+			(elemento_2      (third wff))
+           (elements-wff (rest wff)))
+       (cond
+        ((unary-connector-p elemento_1) 						;; Si el primer elemento es un connector unario
+         (list elemento_1 (infix-to-prefix conector)))
+
+        ((binary-connector-p conector) 						;; Si el primer elemento es un conector binario
+         (list conector
+				(infix-to-prefix elemento_1)
+               (infix-to-prefix elemento_2)))
+
+		 ((n-ary-connector-p elemento_1) 						;; Si el primer elemento es un conector enario
+         (cond
+          ((null elements-wff)        							;; Condicion de parada
+           wff)))
+
+        ((n-ary-connector-p conector) 							;; Si el segundo elemento es conector, cambiamos a prefix por cada elemento
+         (infix_n-ary_prefix wff))
+        (t NIL)))))) ;; no deberia llegar a este paso nunca
+
+(defun infix_n-ary_prefix (wff)
+	(cons 	(second  wff)
+			(mapcar #'(lambda(x) ( infix-to-prefix x))
+                     (recur wff))))
+
+(defun recur (wff)
+	(when wff
+	(cons (car wff) (recur (rest (rest wff))))))
+
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  (defun clause-p (wff)
+  	(when (listp wff)
+  	  (when (and (eql (car wff) +or+) (lista-literales-clause-p (rest wff)))
+  			t)))
+
+  ;; Devuelve los literales de un FBF
+  (defun lista-literales-clause-p (wff)
+  	(if (null  wff)
+  		t
+  		(when (literal-p (car wff))
+  			(lista-literales-clause-p (rest wff)))))
+
+
+(defun cnf-p (wff)
+  	(when (listp wff)
+	  (when (and (eql (car wff) +and+) (lista-literales-cnf-p (rest wff)))
+			t)))
+
+;;Devuelve un lista de clausulas sin los conectores que lo unen
+(defun lista-literales-cnf-p (wff)
+	(if (null  wff)
+		t
+		(when (clause-p (car wff))
+			(lista-literales-cnf-p (rest wff)))))
+
+
+(defun eliminate-biconditional (wff)
+  (if (or (null wff) (literal-p wff))							;; si wff es un literal o nil, devuelve wff
+      wff
+    (let ((connector (first wff)))
+      (if (eq connector +bicond+)								;; Transforma bicondicional en and de cond de sus elementos
+          (let ((wff1 (eliminate-biconditional (second wff)))
+                (wff2 (eliminate-biconditional (third  wff))))
+            (list +and+
+                  (list +cond+ wff1 wff2)
+                  (list +cond+ wff2 wff1)))
+        (cons connector 										;; Enlista el conector seguido de el resto de expresiones
+              (mapcar #'eliminate-biconditional (rest wff)))))));; transformando los bicondicionales
+
+(defun eliminate-conditional (wff)
+   (if (or (null wff) (literal-p wff))							;; si wff es un literal o nil, devuelve wff
+      wff
+    (let ((connector (first wff)))
+      (if (eq connector +cond+)								;; Transforma el condicional en su formula con or y not
+          (let ((wff1 (eliminate-conditional (second wff)))
+                (wff2 (eliminate-conditional (third  wff))))
+            (list +or+
+                  (list +not+ wff1)
+                  wff2 ))
+        (cons connector 										;; Enlista el conector seguido de el resto de expresiones
+              (mapcar #'eliminate-conditional (rest wff)))))))
+
+
+(defun reduce-scope-of-negation (wff)
+  (if (or (null wff) (literal-p wff) (n-ary-connector-p wff))
+		wff
+		(cond
+			((eql (car wff) +not+)
+				(negar_lista (reduce-scope-of-negation (second wff))))
+			(t
+				(cons (reduce-scope-of-negation (car wff)) (reduce-scope-of-negation (rest wff)))))))
+
+;;Niega los elementos de una clausula, sin el conector previo
+(defun negar_literales (x)
+	(when x
+		(if (literal-p (car x))
+			(cons (negar_literal (car x)) (negar_literales (rest x)))
+			(cons (negar_lista (car x)) (negar_literales (rest x))))))
+
+;;Niega una clausula
+(defun negar_lista (wff)
+		(when wff
+			(if (literal-p wff)
+				(negar_literal wff)
+				(cons (exchange-and-or (car wff)) (negar_literales (rest wff))))))
+
+;;Niega un literal
+(defun negar_literal (x)
+	(cond
+		((negative-literal-p  x)
+			(second x))
+		((positive-literal-p x)
+			(list +not+ x))
+		(t nil)))
+
+;;Intercambia or por and y vicevrsa
+(defun exchange-and-or (connector)
+  (cond
+   ((eq connector +and+) +or+)
+   ((eq connector +or+) +and+)
+   (t connector)))
+
+
+(defun combine-elt-lst (elt lst)
+ (if (null lst)
+     (list (list elt))
+   (mapcar #'(lambda (x) (cons elt x)) lst)))
+
+;;Aplica la ley de asociatividad a los elementos en disyuncion
+(defun exchange-NF (nf)
+ (if (or (null nf) (literal-p nf))
+     nf
+   (let ((connector (first nf)))
+     (cons (exchange-and-or connector) ;; intercambia el conector and por or y viceversa
+           (mapcar #'(lambda (x)
+                         (cons connector x))
+               (exchange-NF-aux (rest nf)))))))
+
+;;Combina listas de literales haciendo un producto cartesiano
+(defun exchange-NF-aux (nf)
+ (if (null nf)
+     NIL
+   (let ((lst (first nf)))
+     (mapcan #'(lambda (x)
+                 (combine-elt-lst
+                  x
+                  (exchange-NF-aux (rest nf))))
+       (if (literal-p lst) (list lst) (rest lst))))))
+
+
+;; Combina los wffs o literales que tienen el mismo conector, poniendolos al mismo nivel
+(defun simplify (connector lst-wffs )
+ (if (literal-p lst-wffs)
+     lst-wffs
+   (mapcan #'(lambda (x)
+               (cond
+                ((literal-p x) (list x))
+                ((equal connector (first x))
+                 (mapcan
+                     #'(lambda (y) (simplify connector (list y)))
+                   (rest x)))
+                (t (list x))))
+     lst-wffs)))
+
+;;Transforma una lista en prefijo a FNC
+(defun cnf (wff)
+ (cond
+  ((cnf-p wff) wff)
+  ((literal-p wff)
+   (list +and+ (list +or+ wff))) 											;;Por convencion
+  ((let ((connector (first wff)))
+     (cond
+      ((equal +and+ connector)
+       (cons +and+ (simplify +and+ (mapcar #'cnf (rest wff)))))			;;En caso de estar en conjuncion pone todo al mismo nivel
+      ((equal +or+ connector) 												;;En caso de estar en disyuncion lo transforma a conjuncion
+       (cnf (exchange-NF (cons +or+ (simplify +or+ (rest wff)))))))))))
+
+
+(defun eliminate-connectors (cnf)
+	(when cnf
+	  (cond
+		((n-ary-connector-p (car cnf))						;; Si es un conector enario
+			(eliminate-connectors (rest cnf)))				;; Recursivamente elimina el resto de conectores
+		((listp (car cnf))									;; Si es una lista
+			(cons (eliminate-connectors (car cnf)) (eliminate-connectors (rest cnf)))) ;; Concatena el primer elemento sin conectores con el resto de la lista
+		(t (cons (car cnf) (eliminate-connectors (rest cnf)))))))
+
+(defun wff-infix-to-cnf (wff)
+	(eliminate-connectors (cnf (reduce-scope-of-negation (eliminate-conditional (eliminate-biconditional (infix-to-prefix wff))))))) ;; Transforma a prefijo y aplica todos los pasos
+
+(defun eliminate-repeated-literals (k)
+  (when k
+		(if (comprueba-rep (car k) (rest k))			;; Si el primero esta contenido en el reto de la lista
+			(eliminate-repeated-literals (rest  k))		;; Ignoramos el elemento repetido y seguimos analizando
+			(cons (car k) (eliminate-repeated-literals (rest k))))))	;; Concatemanos el primer elemento para que no se pierda
+
+;; Comprueba si un elemento esta contenido en la lista
+(defun comprueba-rep (elt lst)
+	(when lst
+		(if (equal elt (car lst))
+			T
+			(comprueba-rep elt (rest lst)))))
+
+
+(defun eliminate-repeated-clauses (cnf)
+  (when cnf
+		(if (comprueba-rep-clause (car cnf) (rest cnf))
+			(eliminate-repeated-clauses (rest  cnf))
+			(cons (eliminate-repeated-literals (car cnf)) (eliminate-repeated-clauses (rest cnf))))))
+
+;; Comprueba si cl1 y cl2 son iguales en elementos, no importa el orden
+(defun repited-clause (cl1 cl2)
+	(let ((el1 (eliminate-repeated-literals cl1))
+			(el2 (eliminate-repeated-literals cl2)))
+		(and
+			(clause-in-clause el1 el2) (clause-in-clause el2 el1))))
+
+;; Comprueba si cl1 esta contenido en cl2
+(defun clause-in-clause ( cl1 cl2)
+	(or (null cl1)
+		(and (comprueba-rep (car cl1) cl2)
+			(clause-in-clause (rest cl1) cl2))))
+
+;; Comprueba si una clausula esta en la lista
+(defun comprueba-rep-clause (cl1 lst)
+	(when lst
+		(if (repited-clause cl1 (car lst))
+			T
+			(comprueba-rep-clause cl1 (rest lst)))))
+
+(defun subsume (K1 K2)
+  (when (clause-in-clause k1 k2)		;; Si K1 esta contenido en K2
+	(list k1)))
+
+
+(defun eliminate-subsumed-clauses (cnf)
+  (mimap (car cnf) cnf cnf))
+
+(defun mimap (elt lst lst2)
+	(when lst2
+		(let ((comprueba (comprueba-subs elt lst)))
+			(if comprueba
+				(cons comprueba (mimap (second lst2) lst (rest lst2)))
+			(mimap (second lst2) lst (rest lst2))))))
+
+(defun comb (lst cl1)
+	(when lst
+		(if (subsume (car lst) cl1)
+				T
+				(comb (rest lst) cl1))))
+
+(defun comprueba-subs-clause (cl1 lst)
+	(when lst
+		(if (subsume cl1 (car lst))
+			T
+			(comprueba-subs-clause cl1 (rest lst)))))
+
+(defun comprueba-subs (cl1 lst)
+	(if lst
+		(cond
+			((repited-clause cl1 (car lst))
+				(comprueba-subs cl1 (rest lst)))
+			((subsume (car lst) cl1)
+				nil)
+			(t (comprueba-subs cl1 (rest lst))))
+		cl1))
+
+(defun tautology-p (K)
+    (when k
+		(if (comprueba-rep (negar_literal(car k)) (rest k))		;; Si el negado de un elemento esta contenido en el resto de la lista
+			t
+			(tautology-p (rest k)))))
+
+(defun eliminate-tautologies (cnf)
+	  (when cnf
+		(if (tautology-p (car cnf))									;; Si el primer elemento contiene tautologias
+			(eliminate-tautologies (rest cnf))
+			(cons (car cnf) (eliminate-tautologies (rest cnf))))))
+
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defun simplify-cnf (cnf)
+  (when cnf
+		(eliminate-subsumed-clauses (eliminate-tautologies (eliminate-repeated-clauses cnf)))))
+
+
+(defun extract-neutral-clauses (lambda cnf)
+  (when cnf
+		(if (or (comprueba-rep lambda (car cnf)) (comprueba-rep (negar_literal lambda) (car cnf)))		;; Si el elemento esta contenido en positivo o negativo en la primera clausula de cnf
+			(extract-neutral-clauses lambda (rest cnf))
+			(cons (car cnf) (extract-neutral-clauses lambda (rest cnf))))))
+
+
+(defun extract-positive-clauses (lambda cnf)
+  (when cnf
+		(if (comprueba-rep lambda (car cnf))			;; Si el elemento esta contenido en la primera clausula de la lista
+			(cons (car cnf) (extract-positive-clauses lambda (rest cnf)))
+			(extract-positive-clauses lambda (rest cnf)))))
+
+
+(defun extract-negative-clauses (lambda cnf)
+  (when cnf
+		(if (comprueba-rep (negar_literal lambda) (car cnf))				;; Si el elemento negado esta contenido en la primera clausula de la lista
+			(cons (car cnf) (extract-negative-clauses lambda (rest cnf)))
+			(extract-negative-clauses lambda (rest cnf)))))
+
+
+(defun resolve-on (lambda K1 K2)
+	(when (and lambda k1 k2)
+		(when
+			(or (and (extract-positive-clauses lambda (list k1))
+						(extract-negative-clauses lambda (list k2)))
+					(and (extract-positive-clauses lambda (list k2))
+						(extract-negative-clauses lambda (list k1))))
+				(extract-literals lambda k1 k2))))
+
+(defun extract-literals (lambda k1 k2)
+	(list (extract-literal lambda (union k1 k2))))
+
+(defun extract-literal (elt lst)
+	(when lst
+		(if (or (equal elt (car lst)) (equal (negar_literal elt) (car lst)))
+			(extract-literal elt (rest lst))
+			(cons (car lst) (extract-literal elt (rest lst))))))
+
+(defun build-RES (lambda cnf)
+  ;;
+  ;; 4.4.5 Completa el codigo
+  ;;
+)
+
+(defun  RES-SAT-p (cnf)
+  ;;
+  ;; 4.5 Completa el codigo
+  ;;
+
+
+  (defun logical-consequence-RES-SAT-p (wff w)
+    ;;
+    ;; 4.6 Completa el codigo
+    ;;
+    )

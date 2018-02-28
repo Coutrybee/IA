@@ -135,7 +135,7 @@
                           (let ((rest_2 (rest rest_1)))
                             (or (null rest_2)           ;; conjuncion o disyuncion con un elemento
                                 (wff-prefix-p (cons connector rest_2)))))))	
-                (t NIL)))))))                   ;; No es FBF en formato prefijo 
+                (t NIL)))))))                 ;; No es FBF en formato prefijo 
 ;;
 ;; EJEMPLOS:
 (wff-prefix-p '(v))
@@ -800,7 +800,7 @@
   (when cnf
 		(if (comprueba-rep-clause (car cnf) (rest cnf)) 
 			(eliminate-repeated-clauses (rest  cnf))
-			(append (eliminate-repeated-literals (car cnf)) (eliminate-repeated-clauses (rest cnf))))))
+			(cons (eliminate-repeated-literals (car cnf)) (eliminate-repeated-clauses (rest cnf))))))
 
 ;; Comprueba si cl1 y cl2 son iguales en elementos, no importa el orden
 (defun repited-clause (cl1 cl2)
@@ -877,8 +877,41 @@
 ;; EVALUA A : FBF en FNC equivalente a cnf sin clausulas subsumidas 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun eliminate-subsumed-clauses (cnf) 
-  
-)
+  (mimap (car cnf) cnf cnf))
+
+(defun mimap (elt lst lst2)
+	(when lst2
+		(let ((comprueba (comprueba-subs elt lst)))
+			(if comprueba
+				(cons comprueba (mimap (second lst2) lst (rest lst2)))
+			(mimap (second lst2) lst (rest lst2))))))
+
+(defun comb (lst cl1)
+	(when lst
+		(if (subsume (car lst) cl1)
+				T
+				(comb (rest lst) cl1))))
+
+(defun comprueba-subs-clause (cl1 lst)	
+	(when lst
+		(if (subsume cl1 (car lst))
+			T
+			(comprueba-subs-clause cl1 (rest lst)))))
+
+(defun comprueba-subs (cl1 lst)	
+	(if lst
+		(cond
+			((repited-clause cl1 (car lst))
+				(comprueba-subs cl1 (rest lst)))
+			((subsume (car lst) cl1)
+				nil)
+			(t (comprueba-subs cl1 (rest lst))))
+		cl1))
+
+
+
+(eliminate-subsumed-clauses 
+ '((a b c) (b c) (a (~ c) b) (a c b)))
 
 ;;
 ;;  EJEMPLOS:
@@ -950,10 +983,8 @@
 ;;            y sin clausulas subsumidas
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun simplify-cnf (cnf) 
-  ;;
-  ;; 4.3.7 Completa el codigo
-  ;;
-  )
+  (when cnf
+		(eliminate-subsumed-clauses (eliminate-tautologies (eliminate-repeated-clauses cnf)))))
 
 ;;
 ;;  EJEMPLOS:
@@ -1067,6 +1098,11 @@
                              '(( p (~ q) r) ( p q) (r (~ s) p q) (a b p) ((~ r) p s)))
 ;; NIL
 
+
+
+((extract-negative-clauses 'p (extract-positive-clauses 'p
+                             '(((~ p) (~ q) r) (r q) ( p q) (r (~ s) p q) (a b p) ((~ r) p s))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; EJERCICIO 4.4.4
 ;; resolvente de dos clausulas
@@ -1080,14 +1116,29 @@
 ;;                          eliminados
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun resolve-on (lambda K1 K2) 
-  ;;
-  ;; 4.4.4 Completa el codigo
-  ;;
-  )
+	(when (and lambda k1 k2)
+		(when 
+			(or (and (extract-positive-clauses lambda (list k1)) 
+						(extract-negative-clauses lambda (list k2)))
+					(and (extract-positive-clauses lambda (list k2)) 
+						(extract-negative-clauses lambda (list k1))))
+				(extract-literals lambda k1 k2))))
+
+(defun extract-literals (lambda k1 k2)
+	(list (extract-literal lambda (union k1 k2))))
+
+(defun extract-literal (elt lst)
+	(when lst
+		(if (or (equal elt (car lst)) (equal (negar_literal elt) (car lst)))
+			(extract-literal elt (rest lst))
+			(cons (car lst) (extract-literal elt (rest lst))))))
 
 ;;
 ;;  EJEMPLOS:
 ;;
+
+(extract-equals 'p '(a b (~ c) p))
+
 (resolve-on 'p '(a b (~ c) p) '((~ p) b a q r s))
 ;; (((~ C) B A Q R S))
 
@@ -1104,9 +1155,6 @@
 (resolve-on 'p NIL NIL)
 ;; NIL
 
-(resolve-on 'p '(a b (~ c) (~ p)) '(p b a q r s))
-;; (((~ C) B A Q R S))
-
 (resolve-on 'p '(a b (~ c)) '(p b a q r s))
 ;; NIL
 
@@ -1120,19 +1168,57 @@
 ;; EVALUA A : RES_lambda(cnf) con las clauses repetidas eliminadas
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun build-RES (lambda cnf)
-  ;;
-  ;; 4.4.5 Completa el codigo
-  ;;
-)
+	(eliminate-repeated-clauses (build-RES-aux lambda cnf)))
+
+;(when cnf
+		 
+;			(mapl #'(lambda (x)
+;				(build-RES-aux lambda (car x) (rest x)))
+;				cnf)))
+
+(defun build-RES-aux (lambda lst)
+	(when (and lambda lst)
+		(let ((rec (build-RES-aux-rec lambda (car lst) (rest lst))))
+		(if rec
+			(union rec (build-RES-aux lambda (rest lst)))
+			(build-RES-aux lambda (rest lst))))))
+
+(defun build-RES-aux-rec (lambda elt lst )
+	(when (and lambda elt lst)
+		(let ((resolve (resolve-on lambda elt (car lst))))
+			(if (eql elt (car lst))
+				(build-RES-aux-rec  lambda elt (rest lst))
+				(if resolve
+					resolve
+					(build-RES-aux-rec  lambda elt (rest lst)))))))
+
+
+
+
+(trace extract-literals)
+(trace resolve-on)
+(trace build-RES-aux-rec)
+(trace build-RES-aux)
+		
+
+
+(union (build-RES-empareja-clause 'p '(C  (~ P) B) '((A B) (P D))) nil)
+(resolve-on 'p '(A  (~ P) B) '(A P))
 
 ;;
 ;;  EJEMPLOS:
 ;;
 (build-RES 'p NIL)
 ;; NIL
-(build-RES 'P '((A  (~ P) B) (A P) (A B)));; ((A B))
-(build-RES 'P '((B  (~ P) A) (A P) (A B)));; ((B A))
 
+(build-RES 'p '((A  (~ P) B) (A P)))
+
+(build-RES 'p '((A  (~ P) B) (A P) ((~ P) D) (P E)))
+
+(build-RES 'p '((A  (~ P) B) (A P) (A B)))
+;; ((A B))
+(build-RES 'P '((B  (~ P) A) (A P) (A B)))
+;; ((B A))
 (build-RES 'p '(NIL))
 ;; (NIL)
 
