@@ -886,18 +886,6 @@
 				(cons comprueba (mimap (second lst2) lst (rest lst2)))
 			(mimap (second lst2) lst (rest lst2))))))
 
-(defun comb (lst cl1)
-	(when lst
-		(if (subsume (car lst) cl1)
-				T
-				(comb (rest lst) cl1))))
-
-(defun comprueba-subs-clause (cl1 lst)	
-	(when lst
-		(if (subsume cl1 (car lst))
-			T
-			(comprueba-subs-clause cl1 (rest lst)))))
-
 (defun comprueba-subs (cl1 lst)	
 	(if lst
 		(cond
@@ -1137,8 +1125,6 @@
 ;;  EJEMPLOS:
 ;;
 
-(extract-equals 'p '(a b (~ c) p))
-
 (resolve-on 'p '(a b (~ c) p) '((~ p) b a q r s))
 ;; (((~ C) B A Q R S))
 
@@ -1168,42 +1154,17 @@
 ;; EVALUA A : RES_lambda(cnf) con las clauses repetidas eliminadas
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun build-RES (lambda cnf)
-	(eliminate-repeated-clauses (build-RES-aux lambda cnf)))
+	( eliminate-repeated-clauses (append (res-aux lambda 
+		(extract-positive-clauses lambda cnf) (extract-negative-clauses  lambda cnf)) (extract-neutral-clauses  lambda cnf))))
 
-;(when cnf
-		 
-;			(mapl #'(lambda (x)
-;				(build-RES-aux lambda (car x) (rest x)))
-;				cnf)))
+(defun res-aux (lambda positive negative)
+	(when (car positive)
+		(append (res-map-aux lambda (car positive) negative) (res-aux lambda (rest positive) negative))))
 
-(defun build-RES-aux (lambda lst)
-	(when (and lambda lst)
-		(let ((rec (build-RES-aux-rec lambda (car lst) (rest lst))))
-		(if rec
-			(union rec (build-RES-aux lambda (rest lst)))
-			(build-RES-aux lambda (rest lst))))))
-
-(defun build-RES-aux-rec (lambda elt lst )
-	(when (and lambda elt lst)
-		(let ((resolve (resolve-on lambda elt (car lst))))
-			(if (eql elt (car lst))
-				(build-RES-aux-rec  lambda elt (rest lst))
-				(if resolve
-					resolve
-					(build-RES-aux-rec  lambda elt (rest lst)))))))
-
-
-
-
-(trace extract-literals)
-(trace resolve-on)
-(trace build-RES-aux-rec)
-(trace build-RES-aux)
+(defun res-map-aux (lambda ele-p negative)
+	(mapcan #'(lambda (x) (resolve-on lambda ele-p x))
+		negative))
 		
-
-
-(union (build-RES-empareja-clause 'p '(C  (~ P) B) '((A B) (P D))) nil)
-(resolve-on 'p '(A  (~ P) B) '(A P))
 
 ;;
 ;;  EJEMPLOS:
@@ -1241,10 +1202,15 @@
 ;;                NIL  si cnf es UNSAT
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun  RES-SAT-p (cnf) 
-  ;;
-  ;; 4.5 Completa el codigo
-  ;;
-  )
+  (when cnf
+	(mapcan #'(lambda (x) (simplify-cnf (build-RES x cnf))) (extract-literals cnf)))
+
+(defun extract-literals (cnf)
+	(eliminate-repeated-literals (extract-literals-rec cnf)))
+(defun extract-literals-rec (cnf)
+	(when cnf
+		(union (car cnf) (extract-literals-rec (rest cnf)))))
+
 
 ;;
 ;;  EJEMPLOS:
@@ -1254,6 +1220,7 @@
 ;;
 (RES-SAT-p nil)  ;;; T
 (RES-SAT-p '((p) ((~ q)))) ;;; T 
+(extract-literals '((a b d) ((~ p) q) ((~ c) a b) ((~ b) (~ p) d) (c d (~ a))))
 (RES-SAT-p
  '((a b d) ((~ p) q) ((~ c) a b) ((~ b) (~ p) d) (c d (~ a)))) ;;; T 
 (RES-SAT-p
@@ -1344,4 +1311,3 @@
  (logical-consequence-RES-SAT-p 
   '(((~ p) => q) ^ (p <=> ((~ a) ^ b)) ^ ( (~ p) => (r  ^ (~ q)))) 
   '(~ q)))
-
