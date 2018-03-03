@@ -1260,11 +1260,18 @@
 ;;            NIL en caso de que no sea consecuencia logica.  
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun logical-consequence-RES-SAT-p (wff w)
-  (RES-SAT-p (cons (wff-infix-to-cnf wff) (wff-infix-to-cnf (negar_lista w)))))
+	(if (RES-SAT-p (union (wff-infix-to-cnf wff) (wff-infix-to-cnf (negar_literal w))))
+		nil
+		t))
 
 ;;
 ;;  EJEMPLOS:
 ;;
+
+(union (wff-infix-to-cnf '((p => q) ^ p)) (wff-infix-to-cnf (negar_literal '(~ q))))
+(RES-SAT-p '((P) ((~ P) Q) (Q)))
+(wff-infix-to-cnf '(~ q))
+(negar_literal 'q)
 
 (logical-consequence-RES-SAT-p NIL 'a) ;;; NIL
 (logical-consequence-RES-SAT-p NIL NIL) ;;; NIL
@@ -1280,7 +1287,7 @@
 (logical-consequence-RES-SAT-p '((p => q) ^ p) 'q)
 ;; T
 
-(logical-consequence-RES-SAT-p '((p => q) ^ p) '(~q))
+(logical-consequence-RES-SAT-p '((p => q) ^ p) '(~ q))
 ;; NIL
 
 (logical-consequence-RES-SAT-p 
