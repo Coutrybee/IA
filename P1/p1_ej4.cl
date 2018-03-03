@@ -67,9 +67,7 @@
 ;;            NIL en caso contrario. 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun negative-literal-p (x)
-	(when (listp x) 
-			(when (and (unary-connector-p (car x)) (positive-literal-p (cadr x)))
-			T)))
+	(and (listp x) (unary-connector-p (first x)) (positive-literal-p (second x))))
 
 ;; EJEMPLOS:
 (negative-literal-p '(~ p))        ; T
@@ -876,8 +874,10 @@
 ;; RECIBE   : cnf (FBF en FNC)
 ;; EVALUA A : FBF en FNC equivalente a cnf sin clausulas subsumidas 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defun eliminate-subsumed-clauses (cnf) 
-  (mimap (car cnf) cnf cnf))
+(defun eliminate-subsumed-clauses (cnf)
+	(if (equal cnf '(nil))
+		cnf
+	(mimap (car cnf) cnf cnf)))
 
 (defun mimap (elt lst lst2)
 	(when lst2
@@ -900,7 +900,6 @@
 
 (eliminate-subsumed-clauses 
  '((a b c) (b c) (a (~ c) b) (a c b)))
-
 ;;
 ;;  EJEMPLOS:
 ;;
@@ -972,14 +971,16 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun simplify-cnf (cnf) 
   (when cnf
-		(eliminate-subsumed-clauses (eliminate-tautologies (eliminate-repeated-clauses cnf)))))
+		(eliminate-tautologies (eliminate-subsumed-clauses (eliminate-repeated-clauses cnf)))))
+
+
+(eliminate-subsumed-clauses '((r (~ r)) ((~ r)) (r)))
 
 ;;
 ;;  EJEMPLOS:
 ;;
 (simplify-cnf '((a a) (b) (a) ((~ b)) ((~ b)) (a b c a)  (s s d) (b b c a b)))
 ;; ((B) ((~ B)) (S D) (A)) ;; en cualquier orden
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; EJERCICIO 4.4.1
@@ -1202,25 +1203,40 @@
 ;;                NIL  si cnf es UNSAT
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun  RES-SAT-p (cnf) 
-  (when cnf
-	(mapcan #'(lambda (x) (simplify-cnf (build-RES x cnf))) (extract-literals cnf)))
+	(pivote cnf (extr cnf)))
+	
+(defun pivote (cnf literals)
+	(cond
+		((null cnf)
+			t)
+		((equal cnf '(nil))
+			nil)
+		((null literals)
+			t)
+		(t (when literals
+			(pivote (simplify-cnf (build-RES (car literals) cnf)) (rest literals))))))
 
-(defun extract-literals (cnf)
-	(eliminate-repeated-literals (extract-literals-rec cnf)))
-(defun extract-literals-rec (cnf)
+(defun to-positive (lst)
+	(when lst
+		(if (negative-literal-p (first lst))
+			(cons (negar_literal (first lst)) (to-positive (rest lst)))
+			(cons (first lst) (to-positive (rest lst))))))
+
+(defun extr (cnf)
+	(eliminate-repeated-literals (to-positive (extr-rec cnf))))
+(defun extr-rec (cnf)
 	(when cnf
-		(union (car cnf) (extract-literals-rec (rest cnf)))))
-
-
+		(union (car cnf) (extr-rec (rest cnf)) :test #'equal)))
 ;;
 ;;  EJEMPLOS:
 ;;
 ;;
+
+(simplify-cnf '((r (~ r)) ((~ r)) (r)))
 ;; SAT Examples
 ;;
 (RES-SAT-p nil)  ;;; T
 (RES-SAT-p '((p) ((~ q)))) ;;; T 
-(extract-literals '((a b d) ((~ p) q) ((~ c) a b) ((~ b) (~ p) d) (c d (~ a))))
 (RES-SAT-p
  '((a b d) ((~ p) q) ((~ c) a b) ((~ b) (~ p) d) (c d (~ a)))) ;;; T 
 (RES-SAT-p
@@ -1233,7 +1249,6 @@
 (RES-SAT-p '((p) ((~ p)))) ;;; NIL
 (RES-SAT-p
  '(((~ p) (~ q) (~ r)) (q r) ((~ q) p) (p) (q) ((~ r)) ((~ p) (~ q) r))) ;;; NIL
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; EJERCICIO 4.6:
 ;; Resolucion basada en RES-SAT-p
@@ -1245,14 +1260,12 @@
 ;;            NIL en caso de que no sea consecuencia logica.  
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun logical-consequence-RES-SAT-p (wff w)
-  ;;
-  ;; 4.6 Completa el codigo
-  ;;
-  )
+  (RES-SAT-p (cons (wff-infix-to-cnf wff) (wff-infix-to-cnf (negar_lista w)))))
 
 ;;
 ;;  EJEMPLOS:
 ;;
+
 (logical-consequence-RES-SAT-p NIL 'a) ;;; NIL
 (logical-consequence-RES-SAT-p NIL NIL) ;;; NIL
 (logical-consequence-RES-SAT-p '(q ^ (~ q)) 'a) ;;; T 
