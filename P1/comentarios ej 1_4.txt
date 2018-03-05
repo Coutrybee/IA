@@ -1,0 +1,25 @@
+Para este ejemplo
+
+» (setf cats ’((1 43 23 12) (2 33 54 24)))
+» (setf texts ’((1 3 22 134) (2 43 26 58)))
+» (sc-classifier cats texts #’sc-rec) ;; –-> ((2 0.48981872) (1 0.81555086))
+» (sc-classifier cats texts #’sc-mapcar) ;; –-> ((2 0.48981872) (1 0.81555086))
+
+mapcar
+Evaluation took:
+  0.000 seconds of real time
+  0.000000 seconds of total run time (0.000000 user, 0.000000 system)
+  100.00% CPU
+  86,160 processor cycles
+  0 bytes consed
+
+recursivo
+Evaluation took:
+  0.000 seconds of real time
+  0.000000 seconds of total run time (0.000000 user, 0.000000 system)
+  100.00% CPU
+  36 forms interpreted
+  457,772 processor cycles
+  65,528 bytes consed
+
+ Se puede ver claramente que para este cáclulo, mapcar es altamente superior pues requiere menos ciclos de reloj. En cuanto al tiempo, la consulta es tan sencilla que el programa no tiene precision suficiente para medir el tiempo.
