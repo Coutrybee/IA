@@ -3,7 +3,7 @@
 ;;;;;;;;;;;;;;;;;;;;
 
 ;;Realiza el cuadrado de un elemento
-(defun cuadrado (x) 
+(defun cuadrado (x)
 	(* x x))
 
 ;;Realiza el sumatorio de los elementos de la lista al cuadrado de forma recursiva
@@ -43,7 +43,7 @@
 ;;;;;;;;;;;;;;;;;;;;
 
 (defun insert (vec cat lst)
-	(cond 
+	(cond
 		((eql vec nil) 				;;Si el vector esta vacio se inserta al final
 			(append lst vec))
 		((eql lst nil) 				;;Si hemos acabado de iterar sobre la lista devolvemos el vector en una lista
@@ -54,7 +54,7 @@
 
 (defun sc-conf(cat vs conf)
 	(when vs
-		(if (> (sc-rec cat (first vs)) conf)			
+		(if (> (sc-rec cat (first vs)) conf)
 			(insert (first vs) cat (sc-conf cat (rest vs) conf))	;;Si la similitud es mayor que el conf lo insertamos
 			(sc-conf cat (rest vs) conf))))							;;Si es menr, analizamos con el siguiente
 
@@ -72,6 +72,7 @@
 ;; Ejercicio 2.1 ;;;
 ;;;;;;;;;;;;;;;;;;;;
 
+; Calcula la raiz de un intervalo, dada una tolerancia
 (defun bisect (f a b tol)
 	(if (>= (sgn f a b) 0)
 		nil
@@ -97,6 +98,7 @@
 ;; Ejercicio 2.2 ;;;
 ;;;;;;;;;;;;;;;;;;;;
 
+; Calcula las raices de los intervalos dados consecutivamente en una lista
 (defun allroot (f lst tol)
 	(if (null (car (rest lst)))
 		nil
@@ -108,11 +110,12 @@
 ;;;;;;;;;;;;;;;;;;;;
 
 ; Intervalos crea una lista de numeros de 'a' a 'b' de n en n
-(defun intervalos (a b n) ;(/ (- b a) n) -> n
+(defun intervalos (a b n)
 	(if (> b a)
 		(cons a (intervalos (+ a n) b n))
 		nil))
 
+; Calcula las raices de un intervalo, separado en intervalos de tamaño n, con una tolerancia dada
 (defun allind (f a b N tol)
 	(allroot f (intervalos a b (/ (- b a) (expt 2 N))) tol))
 
@@ -121,6 +124,7 @@
 ;; Ejercicio 3.1 ;;;
 ;;;;;;;;;;;;;;;;;;;;
 
+; Combina el elemento 'elt' con cada uno de los elementos de la lista
 (defun combine-elt-lst (elt lst)
 	(mapcar #'(lambda (x) (list elt x)) lst))
 
@@ -128,6 +132,7 @@
 ;; Ejercicio 3.2 ;;;
 ;;;;;;;;;;;;;;;;;;;;
 
+; Combina dos listas haciendo un producto cartesiano
 (defun combine-lst-lst (lst1 lst2)
 	(if (or (null (car lst1)) (null (car lst2)))
 		nil
@@ -143,12 +148,13 @@
 		(and (consp x)
 			(our-listp (cdr x)))))
 
-
+; Une los elementos que sean una lista, de la lista 'lst', en una sola lista
 (defun combine-elts (lst)
 	(if (our-listp (car lst))
 		(append (combine-elts (car lst)) (rest lst))
 		lst))
 
+; Combina las listas de la lista 'lst' haciendo un producto cartesiano
 (defun combine-list-of-lsts (lst)
 	(if (null (rest lst))
 	 (mapcar #'(lambda (x) (list x)) (car lst))
