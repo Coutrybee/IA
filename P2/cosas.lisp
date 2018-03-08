@@ -65,6 +65,7 @@
 	(Sirtis Davion 6) (Sirtis Proserpina 12)
 	(Proserpina Davion 5) (Proserpina Sirtis 12) (Proserpina Mallory 15) (Proserpina Avalon 8.6)
 	(Kentares Proserpina 7) (Kentares Katril 10) (Kentares Avalon 3)))
+
 (defparameter *worm-holes*
  '((Avalon Kentares 4) (Avalon Mallory 9)
 	(Kentares Avalon 4) (Kentares Proserpina 12)
@@ -72,7 +73,7 @@
 	(Sirtis Proserpina 9) (Sirtis Davion 8) (Sirtis Katril 10)
 	(Davion Katril 5) (Davion Sirtis 8)
 	(Katril Davion 5) (Katril Mallory 5) (Katril Sirtis 10)
-	(Mallory Proserpina 12) (Mallory Katril 5) (Mallory Avalon 9))) 
+	(Mallory Proserpina 11) (Mallory Katril 5) (Mallory Avalon 9))) 
 
 
 
