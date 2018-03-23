@@ -1,10 +1,15 @@
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Ejercicio 2
+;;
 (defun navigate (name state net planets-forbidden)
-    (when net
-        (cond ((member (second (car net)) planets-forbidden)
-                (navigate name state (rest net) planets-forbidden))
-                ((equal state (caar net))
-                    (cons (make-action :name name :origin state :final (second (car net)) :cost (third (car net))) (navigate name state (rest net) planets-forbidden)))
-                (t (navigate name state (rest net) planets-forbidden)))))
+    (let ((primero (first net))
+            (resto (rest net)))
+        (when net
+            (cond ((member (second primero) planets-forbidden)
+                    (navigate name state resto planets-forbidden))
+                    ((equal state (first (first net)))
+                        (cons (make-action :name name :origin state :final (second primero) :cost (third primero)) (navigate name state resto planets-forbidden)))
+                    (t (navigate name state resto planets-forbidden))))))
 
 
 (defun navigate-white-hole (state white-holes )
