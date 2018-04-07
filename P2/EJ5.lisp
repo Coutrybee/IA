@@ -1,26 +1,33 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Ejercicio 5
 ;;
-(defun list_actions (node operators)
-	(mapcan #'(lambda (op)
-				(funcall op (node-state node)))
-				operators))
+;;
+;; Devuelve una lista con los nodos a los que puede acceder un nodo
+;; 
+;;
 
-(defun get_states (node actions f-h)
-	(mapcar	#'(lambda (action)
-				(make-node 
-					:state (action-final action) 
-					:parent node 
-					:action action 
-					:depth (+ (node-depth node) 1) 
-					:g (+ (action-cost action) (node-g node))
-					:h (funcall f-h (action-final action))
-					:f (+ (+ (action-cost action) (node-g node))
-						(funcall f-h (action-final action)))))
+(defun list_actions (node operators)			; Lista las acciones de un nodo para cada una de las operaciones
+	(mapcan 
+		#'(lambda (op)
+			(funcall op (node-state node)))
+			operators))
+
+(defun get_states (node actions f-h)			; Para cada accion crea el nodo final correspondiente
+	(mapcar	
+		#'(lambda (action)
+			(make-node 
+				:state (action-final action) 
+				:parent node 
+				:action action 
+				:depth (+ (node-depth node) 1) 
+				:g (+ (action-cost action) (node-g node))
+				:h (funcall f-h (action-final action))
+				:f (+ (+ (action-cost action) (node-g node))
+					(funcall f-h (action-final action)))))
 		actions))
 		
-(defun expand-node (node problem)
-	(get_states node 
+(defun expand-node (node problem)				; Devuelve una lista de nodos a los que transitar 
+	(get_states node							;desde el nodo pasado por parametro, en base a los elementos del problema
 		(list_actions node (problem-operators problem)) 
 		(problem-f-h problem)))
 

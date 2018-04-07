@@ -1,22 +1,34 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Ejercicio 6
 ;;
-(defun insert_node (node lst-nodes strategy)
-	(if lst-nodes
-		(if (funcall strategy node (first lst-nodes))
-			(cons node lst-nodes)
-			(cons (first lst-nodes) (insert_node node (rest lst-nodes) strategy)))
-		(cons node nil)))
-		
+;;
+;; Devuelve una lista de nodos ordenada en base a la estrategia
+;; 
+;;
+
+(defun insert_node (node lst-nodes strategy)	; Inserta el nodo en la lista de nodos 
+	(let ((f-lst (first lst-nodes)))			; en base a la estrategia
+		(if lst-nodes
+			(if (funcall strategy node f-lst)	; Si la estrategia devuelve t, devuelve el nodo 
+				(cons node lst-nodes)			; concatenando con el resto de la lista
+				(cons							
+					f-lst						; Si la estrategia devuelve nil, 
+					(insert_node				; sigue buscando la posicion del nodo
+						node 
+						(rest lst-nodes) 
+						strategy)))
+			(cons node nil))))					; Si al finalizar la lista no se ha encontrado la posicion, 
+												; se concatena el nodo al final de la lista
+												
 (defun insert-nodes-strategy (nodes lst-nodes strategy)
 	(if nodes
 		(insert-nodes-strategy (rest nodes) 
-			(insert_node (first nodes) lst-nodes (strategy-node-compare-p strategy))
+			(insert_node 
+				(first nodes) 
+				lst-nodes 
+				(strategy-node-compare-p strategy))
 			strategy)
 		lst-nodes))
-		
-
-
 
 (defun node-g-<= 
 	(node-1 node-2)   

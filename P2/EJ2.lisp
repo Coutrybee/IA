@@ -1,15 +1,26 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Ejercicio 2
 ;;
+;;
+;; Devuelve el conjunto de acciones desde un estado
+;; 
+;;
+
 (defun navigate (name state net planets-forbidden)
     (let ((primero (first net))
             (resto (rest net)))
-        (when net
-            (cond ((member (second primero) planets-forbidden)
+        (when net                                                       ; Si no queda ningun nodo devuelvo nil
+            (cond 
+                ((member (second primero) planets-forbidden)            ; Si el estado destino esta prohibido no hago nada
                     (navigate name state resto planets-forbidden))
-                    ((equal state (first (first net)))
-                        (cons (make-action :name name :origin state :final (second primero) :cost (third primero)) (navigate name state resto planets-forbidden)))
-                    (t (navigate name state resto planets-forbidden))))))
+                ((equal state (first primero))                          ; Si el el estado origen es el mismo que el dado creo 
+                    (cons (make-action                                  ; un nodo y lo concateno con la salida recursiva
+                            :name name 
+                            :origin state 
+                            :final (second primero) 
+                            :cost (third primero)) 
+                        (navigate name state resto planets-forbidden)))
+                (t (navigate name state resto planets-forbidden))))))   ; En otro caso sigo buscando
 
 
 (defun navigate-white-hole (state white-holes )

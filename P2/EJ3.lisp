@@ -1,47 +1,70 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Ejercicio 3
 ;;
-(defun iguales (lst1 lst2)
-	(if lst2
-		(if (member (first lst2) lst1)
-			(iguales lst1 (rest lst2))
-			nil)
-		t))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;; Comprueba si el nodo es un nodo final
+;; 
+;;
 
-;;Devuelve una lista de todos los nombres de nodos mandatory por los que he pasado (incluye repetidos si los hay)
-(defun comp-mandatory (node mandatory)
-	(when node
-		(if (member (node-state node) mandatory)
-			(cons (node-state node) (comp-mandatory (node-parent node) mandatory))
-			(comp-mandatory (node-parent node) mandatory))))
-
-;;Si he pasado por todos los mandatory devuelve t sino nil
-;;Devuelve t si mandatory es nil
-(defun manda (node mandatory)
-	(iguales (comp-mandatory node mandatory) mandatory))
-
+(defun f-goal-test-galaxy-recur (node planets-mandatory)
+	(if node											
+		(if planets-mandatory								; Si he pasado por todos los obligados devuelvo t
+			(f-goal-test-galaxy-recur 
+				(node-parent node) 
+				(let ((state (node-state node)))
+					(if (member state planets-mandatory)	; Si el nodo esta en los obligados, lo quito de la lista
+						(set-exclusive-or 
+							(list state) 
+							planets-mandatory)
+						planets-mandatory)))
+			t)
+		(not planets-mandatory)))							; Si no hay mas nodos en el camino devuelvo los planetas 
+															; obligados que quedan por visitar
+										
+			
 (defun f-goal-test-galaxy (node planets-destination planets-mandatory)
-	(and (member (node-state node) planets-destination) (manda node planets-mandatory)))
-	
-	
+	(and (member (node-state node) planets-destination) 
+		(f-goal-test-galaxy-recur node planets-mandatory)))
+
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;; Comprueba si los dos nodos han pasado por los mismos
+;; nodos obligatorios
+;;
+;;
+
 (defun f-search-state-equal-galaxy-recur (node planets-mandatory)
-	(when node
-		(if (member (node-state node) planets-mandatory :test 'equal)
-			(cons (node-state node) (f-search-state-equal-galaxy-recur (node-parent node) planets-mandatory))
-			(f-search-state-equal-galaxy-recur (node-parent node) planets-mandatory))))
+	(when (and node planets-mandatory)					; Si no quedan nodos en el camino o si no quedan planetas obligados, devuelvo nil
+		(let ((parent (node-parent node))
+				(state (node-state node)))
+			
+			(if (member state							
+					planets-mandatory 
+					:test 'equal)
+				(cons state 							; Si el nodo actual esta en la lista de obligados 
+					(f-search-state-equal-galaxy-recur	; lo concateno con la llamada recursiva y lo extraigo de la lista
+						parent  
+						(set-exclusive-or 
+							(list state) 
+							planets-mandatory)))
+				(f-search-state-equal-galaxy-recur		; Si no esta en la lista de obligados 
+					parent								; sigo recorriendo el camino con la llamada recursiva
+					planets-mandatory)))))
 	
 (defun f-search-state-equal-galaxy (node_1 node_2 &optional planets-mandatory)   
-	(when (equal (node-state node_1) (node-state node_2))
-		(if planets-mandatory
-			(equal (f-search-state-equal-galaxy-recur 
-					node_1  
-					planets-mandatory)
-				(f-search-state-equal-galaxy-recur 
-					node_2
-					planets-mandatory))
-			t)))
-
-
+	(when (equal (node-state node_1)					; Si los nodos no tienen el mismo estado devuelvo nil
+			(node-state node_2))	
+		(if planets-mandatory							
+			(not (set-exclusive-or						; Si las listas de nodos obligados por los que ha pasado
+					(f-search-state-equal-galaxy-recur	; tienen los mismo elementos, devuelvo nil
+						node_1  
+						planets-mandatory)
+					(f-search-state-equal-galaxy-recur 
+						node_2
+						planets-mandatory)))
+			t)))										; Si no hay nodos obligados devuelvo t
 
 
 (f-search-state-equal-galaxy node-01 node-01) 
@@ -73,3 +96,5 @@
 (f-goal-test-galaxy node-02 '(Kentares Uranus) '(Avalon Katril)); -> NIL
 (f-goal-test-galaxy node-03 '(Kentares Uranus) '(Avalon Katril)); -> NIL
 (f-goal-test-galaxy node-04 '(Kentares Uranus) '(Avalon Katril)); -> T
+
+(f-goal-test-galaxy-recur node-04 '(Avalon Katril))

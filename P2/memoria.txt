@@ -1,0 +1,17 @@
+1.
+    El usua de las estructuras y las funciones lambda dentro de ellas permiten un diseño muy general y por tanto, reutilizable. 
+    Mismamente, en esta práctica hemos podido realizar 4 tipos de busquedas diferentes (A-estrella, profundidad, anchura y coste uniforme).
+    Además, podemos porbar diferentes variantes de problema añadiendo campos en la estructura siendo muy facil su insercion en la logica y 
+    el código del programa.
+2.
+    Es un diseño eficiente puesto que al ser una referencia, no duplicamos memoria sino que accedemos a la que ya ha sido generada anteriormente.
+3.
+    Busqueda en profundidad b·m
+    Búsqueda en anchura b^(d+1) 
+    A estella b^d d=(C*)/epsilon
+    Coste uniforme b^(techo((C*)/epsilon))
+4.
+    Busqueda en profundidad b^m
+    Búsqueda en anchura b^(d+1) 
+    A estella b^d d=(C*)/epsilon
+    Coste uniforme b^(techo((C*)/epsilon))

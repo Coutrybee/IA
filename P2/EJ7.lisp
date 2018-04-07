@@ -1,12 +1,16 @@
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Ejercicio 7
 ;;
-(defun node-f-<= 
-	(node-1 node-2)   
-	(<= (node-f node-1)       
+;;
+;; Parametro que define la estrategia A*
+;; 
+;;
+
+(defun node-f-<= (node-1 node-2)   
+	(<= (node-f node-1)				; Devuelve la comparacion de los valores de funcion
 	(node-f node-2)))
 
-(defparameter *A-star*   
+(defparameter *A-star*  			; Define la estrategia A*
 	(make-strategy 
 		:name 'uniform-cost 
 		:node-compare-p #'node-f-<=))
