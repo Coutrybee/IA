@@ -1,26 +1,31 @@
-?- list_count([b],[b,a,b,a,b],Xn). 
-Xn = [b-3] False 
+?-sort_list([p-0, a-6, g-7, t-2], X). 
+X = [p-0, t-2, a-6, g-7] false 
  
-?- list_count([b,a],[b,a,b,a,b],Xn). 
-Xn = [b-3, a-2] False 
+?-sort_list([p-0, a-6, g-7, p-9, t-2], X). 
+X = [p-0, t-2, a-6, g-7, p-9] false 
  
-?- list_count([b,a,c],[b,a,b,a,b],Xn). 
-Xn = [b-3, a-2, c-0] false
+?-sort_list([p-0, a-6, g-7, p-9, t-2, 9-99], X).
+X = [p-0, t-2, a-6, g-7, p-9, 9-99] false 
+ 
 
+sort_list([],[]).
+sort_list([A|Rs1],R) :-
+	sort_list(Rs1,Ri),
+    insert([A],Ri,R).
+ 
+ 
+insert([Z-X],[], [Z-X]).
+insert([Z-X],[B-A|Rs], R) :-
+    A > X,
+    Rs \= [],
+    concatena([Z-X],[B-A|Rs],R).
+insert([Z-X],[B-A|[]], [Z-X,B-A]) :-
+    A > X.
+    
+insert([Z-X],[B-A|Rs],[B-A|R]) :-
+    A =< X,
+    insert([Z-X],Rs, R).
+    
 concatena([], L, L).
 concatena([X|L1], L2, [X|L3]) :-
     concatena(L1, L2, L3).
-
- elem_count(_,[],0).
- elem_count(A,[A|Rs],Xn) :-
-    elem_count(A,Rs,C),
-    Xn is C +1.
- elem_count(A,[B|Rs],Xn) :-
-    B \= A,
-    elem_count(A,Rs,Xn).
-
-list_count([],_,[]).
-list_count([A|Rs],B,Xn) :-
-    elem_count(A,B,C),
-    list_count(Rs,B,D),
-    concatena([A-C],D,Xn).
